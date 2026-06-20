@@ -1,1 +1,1290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nanoprocessor — CS1050</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
 
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --border: #1e2d45;
+    --accent: #00d4ff;
+    --accent2: #7c3aed;
+    --accent3: #10b981;
+    --accent4: #f59e0b;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --mono: 'Space Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    overflow-x: hidden;
+  }
+
+  /* ── PROGRESS BAR ── */
+  #progress {
+    position: fixed; top: 0; left: 0; height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    z-index: 1000; transition: width 0.2s;
+    box-shadow: 0 0 12px var(--accent);
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 2.5rem; height: 56px;
+    background: rgba(10,14,26,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    z-index: 100;
+  }
+
+  .nav-logo {
+    font-family: var(--mono); font-size: 0.8rem;
+    color: var(--accent); letter-spacing: 0.1em;
+  }
+
+  .nav-dots {
+    display: flex; gap: 6px;
+  }
+
+  .nav-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--border); cursor: pointer;
+    transition: background 0.3s, transform 0.2s;
+    border: none;
+  }
+
+  .nav-dot.active { background: var(--accent); transform: scale(1.4); }
+
+  .nav-slide-count {
+    font-family: var(--mono); font-size: 0.75rem; color: var(--muted);
+  }
+
+  /* ── SLIDE CONTAINER ── */
+  .slides {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    position: relative;
+    margin-top: 56px;
+    height: calc(100vh - 56px);
+  }
+
+  .slide {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    padding: 3rem 4rem;
+    opacity: 0;
+    transform: translateX(60px);
+    transition: opacity 0.5s cubic-bezier(.4,0,.2,1), transform 0.5s cubic-bezier(.4,0,.2,1);
+    pointer-events: none;
+    overflow-y: auto;
+  }
+
+  .slide.active {
+    opacity: 1; transform: translateX(0); pointer-events: all;
+  }
+
+  .slide.exit-left {
+    opacity: 0; transform: translateX(-60px);
+  }
+
+  /* ── SLIDE TYPES ── */
+  .slide-cover {
+    justify-content: center; align-items: flex-start;
+    background: radial-gradient(ellipse at 20% 50%, rgba(0,212,255,0.08) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 20%, rgba(124,58,237,0.08) 0%, transparent 50%),
+                var(--bg);
+  }
+
+  .slide-content {
+    background: var(--bg);
+  }
+
+  .slide-dark {
+    background: linear-gradient(135deg, #0d1b2a 0%, #0a0e1a 100%);
+  }
+
+  /* ── COVER ELEMENTS ── */
+  .cover-tag {
+    font-family: var(--mono); font-size: 0.7rem;
+    color: var(--accent); letter-spacing: 0.2em;
+    text-transform: uppercase; margin-bottom: 1.5rem;
+    display: flex; align-items: center; gap: 0.75rem;
+  }
+
+  .cover-tag::before {
+    content: ''; width: 40px; height: 1px; background: var(--accent);
+  }
+
+  .cover-title {
+    font-size: clamp(2.5rem, 5vw, 4.5rem);
+    font-weight: 600; line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin-bottom: 1rem;
+  }
+
+  .cover-title span {
+    color: var(--accent);
+    font-family: var(--mono);
+  }
+
+  .cover-sub {
+    font-size: 1.1rem; color: var(--muted);
+    font-weight: 300; margin-bottom: 3rem;
+    max-width: 500px; line-height: 1.6;
+  }
+
+  .cover-meta {
+    display: flex; gap: 3rem; margin-top: auto;
+  }
+
+  .meta-item { display: flex; flex-direction: column; gap: 4px; }
+  .meta-label { font-size: 0.65rem; color: var(--muted); letter-spacing: 0.15em; text-transform: uppercase; font-family: var(--mono); }
+  .meta-value { font-size: 0.95rem; color: var(--text); font-weight: 500; }
+
+  .cover-circuit {
+    position: absolute; right: 4rem; top: 50%; transform: translateY(-50%);
+    width: 380px; height: 380px; opacity: 0.15;
+  }
+
+  /* ── SECTION HEADINGS ── */
+  .slide-label {
+    font-family: var(--mono); font-size: 0.65rem;
+    color: var(--accent); letter-spacing: 0.2em;
+    text-transform: uppercase; margin-bottom: 0.75rem;
+  }
+
+  .slide-title {
+    font-size: clamp(1.6rem, 3vw, 2.4rem);
+    font-weight: 600; letter-spacing: -0.02em;
+    margin-bottom: 2rem; line-height: 1.2;
+  }
+
+  .slide-title .hl { color: var(--accent); }
+  .slide-title .hl2 { color: var(--accent3); }
+  .slide-title .hl3 { color: var(--accent4); }
+
+  /* ── CONTENT BLOCKS ── */
+  .two-col {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;
+    flex: 1;
+  }
+
+  .three-col {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem;
+    flex: 1;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .card.blue::before { background: var(--accent); }
+  .card.purple::before { background: var(--accent2); }
+  .card.green::before { background: var(--accent3); }
+  .card.amber::before { background: var(--accent4); }
+
+  .card-icon {
+    font-size: 1.5rem; margin-bottom: 0.75rem;
+  }
+
+  .card-title {
+    font-family: var(--mono); font-size: 0.8rem;
+    color: var(--accent); margin-bottom: 0.75rem;
+    letter-spacing: 0.05em;
+  }
+
+  .card.purple .card-title { color: var(--accent2); }
+  .card.green .card-title { color: var(--accent3); }
+  .card.amber .card-title { color: var(--accent4); }
+
+  .card-body {
+    font-size: 0.88rem; color: var(--muted);
+    line-height: 1.7;
+  }
+
+  /* ── INSTRUCTION TABLE ── */
+  .instr-table {
+    width: 100%; border-collapse: collapse;
+    font-family: var(--mono); font-size: 0.8rem;
+  }
+
+  .instr-table th {
+    background: var(--surface2); color: var(--accent);
+    padding: 0.75rem 1rem; text-align: left;
+    font-size: 0.65rem; letter-spacing: 0.1em;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .instr-table td {
+    padding: 0.65rem 1rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text); vertical-align: middle;
+  }
+
+  .instr-table tr:last-child td { border-bottom: none; }
+
+  .instr-table tr:hover td {
+    background: rgba(0,212,255,0.03);
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px; border-radius: 4px;
+    font-size: 0.7rem; font-family: var(--mono);
+  }
+
+  .badge-blue { background: rgba(0,212,255,0.15); color: var(--accent); }
+  .badge-purple { background: rgba(124,58,237,0.15); color: #a78bfa; }
+  .badge-green { background: rgba(16,185,129,0.15); color: var(--accent3); }
+  .badge-amber { background: rgba(245,158,11,0.15); color: var(--accent4); }
+
+  /* ── CODE BLOCK ── */
+  .code-block {
+    background: #0d1117;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    font-family: var(--mono); font-size: 0.78rem;
+    line-height: 1.8; color: #a8b2c4;
+    overflow-x: auto;
+  }
+
+  .code-block .kw { color: #ff79c6; }
+  .code-block .str { color: var(--accent3); }
+  .code-block .cm { color: #6272a4; font-style: italic; }
+  .code-block .num { color: var(--accent4); }
+  .code-block .fn { color: var(--accent); }
+
+  /* ── FLOW DIAGRAM ── */
+  .flow {
+    display: flex; align-items: center; gap: 0;
+    overflow-x: auto; padding: 1rem 0;
+  }
+
+  .flow-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+    min-width: 120px; text-align: center;
+    flex-shrink: 0;
+  }
+
+  .flow-box .fb-title {
+    font-family: var(--mono); font-size: 0.7rem;
+    color: var(--accent); margin-bottom: 0.4rem;
+    letter-spacing: 0.05em;
+  }
+
+  .flow-box .fb-body {
+    font-size: 0.75rem; color: var(--muted);
+    line-height: 1.4;
+  }
+
+  .flow-arrow {
+    color: var(--border); font-size: 1.2rem;
+    padding: 0 0.4rem; flex-shrink: 0;
+    position: relative;
+  }
+
+  .flow-arrow::after {
+    content: '›'; color: var(--accent); font-size: 1.4rem;
+  }
+
+  /* ── SIGNAL ROW ── */
+  .signal-list { display: flex; flex-direction: column; gap: 0.5rem; }
+
+  .signal-row {
+    display: grid; grid-template-columns: 180px 80px 1fr;
+    align-items: center; gap: 1rem;
+    padding: 0.6rem 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.82rem;
+  }
+
+  .signal-name { font-family: var(--mono); color: var(--accent); font-size: 0.78rem; }
+  .signal-type { font-family: var(--mono); font-size: 0.7rem; color: var(--muted); }
+  .signal-desc { color: var(--text); font-size: 0.82rem; }
+
+  /* ── TRACE TABLE ── */
+  .trace-table {
+    width: 100%; border-collapse: collapse;
+    font-size: 0.8rem;
+  }
+
+  .trace-table th {
+    background: var(--surface2);
+    padding: 0.6rem 0.8rem; text-align: center;
+    color: var(--accent); font-family: var(--mono);
+    font-size: 0.65rem; letter-spacing: 0.08em;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .trace-table td {
+    padding: 0.55rem 0.8rem; text-align: center;
+    border-bottom: 1px solid rgba(30,45,69,0.5);
+    font-family: var(--mono); font-size: 0.75rem;
+  }
+
+  .trace-table tr.highlight td {
+    background: rgba(0,212,255,0.07);
+    color: var(--accent);
+  }
+
+  .trace-table tr.halt td {
+    background: rgba(124,58,237,0.08);
+    color: #a78bfa;
+  }
+
+  /* ── CONCLUSION ITEMS ── */
+  .achieve-list {
+    display: flex; flex-direction: column; gap: 1rem;
+  }
+
+  .achieve-item {
+    display: flex; align-items: flex-start; gap: 1rem;
+    padding: 1rem 1.25rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+
+  .achieve-num {
+    font-family: var(--mono); font-size: 1.4rem;
+    color: var(--accent); font-weight: 700;
+    line-height: 1; min-width: 2rem;
+    opacity: 0.4;
+  }
+
+  .achieve-text strong {
+    display: block; font-size: 0.9rem;
+    color: var(--text); margin-bottom: 0.25rem;
+  }
+
+  .achieve-text span {
+    font-size: 0.82rem; color: var(--muted);
+  }
+
+  /* ── KEYBOARD HINT ── */
+  .keyboard-hint {
+    position: fixed; bottom: 1.5rem; right: 2rem;
+    display: flex; gap: 0.5rem; align-items: center;
+    font-family: var(--mono); font-size: 0.65rem; color: var(--muted);
+    z-index: 100;
+  }
+
+  .key {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 5px; padding: 4px 8px;
+    color: var(--text); font-size: 0.7rem;
+  }
+
+  /* ── SECTION DIVIDER ── */
+  .section-slide {
+    justify-content: center; align-items: flex-start;
+    background: linear-gradient(135deg, rgba(0,212,255,0.05) 0%, var(--bg) 50%,
+                rgba(124,58,237,0.05) 100%);
+  }
+
+  .section-num {
+    font-family: var(--mono); font-size: 6rem;
+    font-weight: 700; color: var(--border);
+    line-height: 1; margin-bottom: 1.5rem;
+    position: relative;
+  }
+
+  .section-num::after {
+    content: attr(data-n);
+    position: absolute; inset: 0;
+    color: transparent;
+    -webkit-text-stroke: 1px var(--border);
+  }
+
+  .section-title {
+    font-size: 2.5rem; font-weight: 600;
+    letter-spacing: -0.02em; margin-bottom: 1rem;
+    line-height: 1.2;
+  }
+
+  .section-desc {
+    font-size: 1rem; color: var(--muted);
+    max-width: 480px; line-height: 1.7;
+  }
+
+  /* ── COMPONENT GRID ── */
+  .comp-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.8rem;
+    flex: 1;
+  }
+
+  .comp-cell {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+    display: flex; flex-direction: column; gap: 0.4rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    cursor: default;
+  }
+
+  .comp-cell:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 20px rgba(0,212,255,0.08);
+  }
+
+  .comp-cell .cc-icon { font-size: 1.2rem; }
+  .comp-cell .cc-name {
+    font-family: var(--mono); font-size: 0.72rem;
+    color: var(--accent); font-weight: 700;
+  }
+
+  .comp-cell .cc-desc {
+    font-size: 0.75rem; color: var(--muted); line-height: 1.4;
+  }
+
+  /* ── OPCODE VIZ ── */
+  .opcode-vis {
+    display: flex; gap: 0; align-items: center;
+    font-family: var(--mono); font-size: 0.9rem;
+    margin: 1.5rem 0;
+  }
+
+  .bit-group {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 0.3rem;
+  }
+
+  .bit-cells {
+    display: flex;
+  }
+
+  .bit-cell {
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border);
+    font-family: var(--mono); font-size: 0.75rem;
+    color: var(--text);
+    background: var(--surface);
+  }
+
+  .bit-cell.op { background: rgba(0,212,255,0.12); color: var(--accent); border-color: var(--accent); }
+  .bit-cell.reg { background: rgba(124,58,237,0.12); color: #a78bfa; border-color: var(--accent2); }
+  .bit-cell.imm { background: rgba(16,185,129,0.12); color: var(--accent3); border-color: var(--accent3); }
+
+  .bit-label {
+    font-size: 0.6rem; color: var(--muted); letter-spacing: 0.08em;
+  }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* animations */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .slide.active > * {
+    animation: fadeUp 0.4s ease both;
+  }
+
+  .slide.active > *:nth-child(1) { animation-delay: 0.05s; }
+  .slide.active > *:nth-child(2) { animation-delay: 0.12s; }
+  .slide.active > *:nth-child(3) { animation-delay: 0.19s; }
+  .slide.active > *:nth-child(4) { animation-delay: 0.26s; }
+  .slide.active > *:nth-child(5) { animation-delay: 0.33s; }
+
+  .thank-you {
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    height: 100%; text-align: center;
+    background: radial-gradient(ellipse at center, rgba(0,212,255,0.06) 0%, transparent 70%), var(--bg);
+  }
+
+  .ty-big {
+    font-size: clamp(3rem, 8vw, 7rem);
+    font-weight: 700; letter-spacing: -0.03em;
+    line-height: 1;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    margin-bottom: 1.5rem;
+  }
+
+  .ty-sub { font-size: 1.1rem; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<div id="progress"></div>
+
+<nav>
+  <div class="nav-logo">// NANOPROCESSOR</div>
+  <div class="nav-dots" id="navDots"></div>
+  <div class="nav-slide-count" id="slideCount">01 / 14</div>
+</nav>
+
+<div class="slides" id="slides">
+
+  <!-- ── SLIDE 1: COVER ── -->
+  <div class="slide slide-cover active" id="slide-0">
+    <svg class="cover-circuit" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="40" y="40" width="320" height="320" rx="8" stroke="white" stroke-width="1"/>
+      <line x1="40" y1="120" x2="360" y2="120" stroke="white" stroke-width="0.5"/>
+      <line x1="40" y1="200" x2="360" y2="200" stroke="white" stroke-width="0.5"/>
+      <line x1="40" y1="280" x2="360" y2="280" stroke="white" stroke-width="0.5"/>
+      <line x1="120" y1="40" x2="120" y2="360" stroke="white" stroke-width="0.5"/>
+      <line x1="200" y1="40" x2="200" y2="360" stroke="white" stroke-width="0.5"/>
+      <line x1="280" y1="40" x2="280" y2="360" stroke="white" stroke-width="0.5"/>
+      <circle cx="120" cy="120" r="6" fill="white"/>
+      <circle cx="200" cy="120" r="6" fill="white"/>
+      <circle cx="280" cy="200" r="6" fill="white"/>
+      <circle cx="200" cy="280" r="6" fill="white"/>
+      <circle cx="120" cy="280" r="6" fill="white"/>
+      <rect x="150" y="150" width="100" height="100" rx="4" stroke="white" stroke-width="1.5"/>
+      <text x="200" y="208" text-anchor="middle" fill="white" font-size="14" font-family="monospace">CPU</text>
+      <line x1="40" y1="200" x2="150" y2="200" stroke="white" stroke-width="1.5"/>
+      <line x1="250" y1="200" x2="360" y2="200" stroke="white" stroke-width="1.5"/>
+      <line x1="200" y1="40" x2="200" y2="150" stroke="white" stroke-width="1.5"/>
+      <line x1="200" y1="250" x2="200" y2="360" stroke="white" stroke-width="1.5"/>
+      <circle cx="40" cy="200" r="4" fill="white"/>
+      <circle cx="360" cy="200" r="4" fill="white"/>
+      <circle cx="200" cy="40" r="4" fill="white"/>
+      <circle cx="200" cy="360" r="4" fill="white"/>
+    </svg>
+
+    <div class="cover-tag">CS1050 — Computer Organisation & Digital Design</div>
+    <h1 class="cover-title">Nano<span>processor</span><br>Design</h1>
+    <p class="cover-sub">A single-cycle 4-bit processor with 8 registers, 4 base instructions, and full FPGA deployment on BASYS3.</p>
+    <div class="cover-meta">
+      <div class="meta-item">
+        <span class="meta-label">University</span>
+        <span class="meta-value">University of Moratuwa</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Lab</span>
+        <span class="meta-value">Lab 9–10 — Competition</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Group</span>
+        <span class="meta-value">Group 01</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Architecture</span>
+        <span class="meta-value">4-bit · 8 Registers · Single Cycle</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SLIDE 2: PROJECT OVERVIEW ── -->
+  <div class="slide slide-content" id="slide-1">
+    <div class="slide-label">Overview</div>
+    <h2 class="slide-title">What We <span class="hl">Built</span></h2>
+    <div class="two-col" style="gap:1.5rem;">
+      <div style="display:flex;flex-direction:column;gap:1rem;">
+        <div class="card blue">
+          <div class="card-icon">⚙️</div>
+          <div class="card-title">Core Processor</div>
+          <div class="card-body">A 4-bit single-cycle processor with 8 general-purpose registers. Executes one instruction every clock cycle — fetch, decode, and execute all happen in one shot.</div>
+        </div>
+        <div class="card purple">
+          <div class="card-icon">📋</div>
+          <div class="card-title">Instruction Set</div>
+          <div class="card-body">4 base instructions: MOVI, ADD, NEG, JZR. Extended version adds SUB, AND, OR, XOR, MUL, CMP — all encoded in 12 bits.</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:1rem;">
+        <div class="card green">
+          <div class="card-icon">🔌</div>
+          <div class="card-title">FPGA Deployment</div>
+          <div class="card-body">Synthesised and tested on the BASYS3 board. LEDs display register values. 7-segment display shows multiplication results. BTNC resets the processor.</div>
+        </div>
+        <div class="card amber">
+          <div class="card-icon">🧩</div>
+          <div class="card-title">Modular VHDL</div>
+          <div class="card-body">Every component — ROM, ALU, Register Bank, Decoder, Multiplier, Comparator — is a separate VHDL entity. Fully structural design from D flip-flops up.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SLIDE 3: INSTRUCTION ENCODING ── -->
+  <div class="slide slide-content" id="slide-2">
+    <div class="slide-label">Instruction Set Architecture</div>
+    <h2 class="slide-title">12-bit <span class="hl">Instruction</span> Encoding</h2>
+    <div style="margin-bottom:1.5rem;">
+      <div class="opcode-vis">
+        <div class="bit-group">
+          <div class="bit-cells">
+            <div class="bit-cell op">1</div>
+            <div class="bit-cell op">1</div>
+          </div>
+          <div class="bit-label">OP [11:10]</div>
+        </div>
+        <div class="bit-group">
+          <div class="bit-cells">
+            <div class="bit-cell reg">R</div>
+            <div class="bit-cell reg">R</div>
+            <div class="bit-cell reg">R</div>
+          </div>
+          <div class="bit-label">REG A [9:7]</div>
+        </div>
+        <div class="bit-group">
+          <div class="bit-cells">
+            <div class="bit-cell reg" style="opacity:0.5">R</div>
+            <div class="bit-cell reg" style="opacity:0.5">R</div>
+            <div class="bit-cell reg" style="opacity:0.5">R</div>
+          </div>
+          <div class="bit-label">REG B [6:4]</div>
+        </div>
+        <div class="bit-group">
+          <div class="bit-cells">
+            <div class="bit-cell imm">d</div>
+            <div class="bit-cell imm">d</div>
+            <div class="bit-cell imm">d</div>
+            <div class="bit-cell imm">d</div>
+          </div>
+          <div class="bit-label">IMM / ADDR [3:0]</div>
+        </div>
+      </div>
+    </div>
+    <table class="instr-table">
+      <thead>
+        <tr>
+          <th>OPCODE</th><th>BITS 11–10</th><th>INSTRUCTION</th><th>OPERATION</th><th>ENCODING</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge badge-blue">ADD/ALU</span></td>
+          <td><code>00</code></td>
+          <td>ADD Ra, Rb</td>
+          <td>Ra = Ra + Rb</td>
+          <td><code>00 RRR RRR 0000</code></td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-purple">NEG</span></td>
+          <td><code>01</code></td>
+          <td>NEG R</td>
+          <td>R = 0 − R</td>
+          <td><code>01 RRR 000 0000</code></td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-green">MOVI</span></td>
+          <td><code>10</code></td>
+          <td>MOVI R, d</td>
+          <td>R ← immediate d</td>
+          <td><code>10 RRR 000 dddd</code></td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-amber">JZR</span></td>
+          <td><code>11</code></td>
+          <td>JZR R, d</td>
+          <td>if R=0: PC←d</td>
+          <td><code>11 RRR 000 0ddd</code></td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="margin-top:1.25rem;display:flex;gap:1rem;">
+      <div class="card green" style="flex:1;padding:0.85rem 1.1rem;">
+        <div class="card-title" style="margin-bottom:0.3rem;">R0 is hardwired to 0000</div>
+        <div class="card-body">R0 has no flip-flops. NEG uses R0 as operand A to compute 0−R.</div>
+      </div>
+      <div class="card blue" style="flex:1;padding:0.85rem 1.1rem;">
+        <div class="card-title" style="margin-bottom:0.3rem;">JZR R0 = unconditional jump</div>
+        <div class="card-body">Since R0 is always 0, JZR R0 always branches — used as a loop-back instruction.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SLIDE 4: EXTENDED INSTRUCTIONS ── -->
+  <div class="slide slide-content" id="slide-3">
+    <div class="slide-label">Extended ISA</div>
+    <h2 class="slide-title">Extended <span class="hl2">Instruction Set</span></h2>
+    <p style="color:var(--muted);font-size:0.88rem;margin-bottom:1.25rem;">All extended ops share opcode <code style="color:var(--accent)">00</code> — distinguished by a 4-bit sub-opcode in bits [3:0].</p>
+    <table class="instr-table">
+      <thead>
+        <tr><th>INSTRUCTION</th><th>OPERATION</th><th>SUB-OPCODE [3:0]</th><th>TYPE</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>ADD Ra, Rb</td><td>Ra = Ra + Rb</td><td><code>0000</code></td><td><span class="badge badge-blue">Arithmetic</span></td></tr>
+        <tr><td>SUB Ra, Rb</td><td>Ra = Ra − Rb</td><td><code>0001</code></td><td><span class="badge badge-blue">Arithmetic</span></td></tr>
+        <tr><td>AND Ra, Rb</td><td>Ra = Ra &amp; Rb</td><td><code>0010</code></td><td><span class="badge badge-green">Bitwise</span></td></tr>
+        <tr><td>OR Ra, Rb</td><td>Ra = Ra | Rb</td><td><code>0011</code></td><td><span class="badge badge-green">Bitwise</span></td></tr>
+        <tr><td>XOR Ra, Rb</td><td>Ra = Ra ^ Rb</td><td><code>0100</code></td><td><span class="badge badge-green">Bitwise</span></td></tr>
+        <tr><td>MUL Ra, Rb</td><td>Ra = Ra × Rb</td><td><code>0101</code></td><td><span class="badge badge-purple">Multiply</span></td></tr>
+        <tr><td>CMP Ra, Rb</td><td>Sets EQ / GT / LT flags</td><td><code>0111</code></td><td><span class="badge badge-amber">Compare</span></td></tr>
+      </tbody>
+    </table>
+    <div class="three-col" style="margin-top:1.25rem;gap:0.9rem;">
+      <div class="card green" style="padding:0.9rem">
+        <div class="card-title">Bitwise Logic</div>
+        <div class="card-body">AND, OR, XOR operate on all 4 bits simultaneously. Purely combinational — no clock delay.</div>
+      </div>
+      <div class="card purple" style="padding:0.9rem">
+        <div class="card-title">Multiplication</div>
+        <div class="card-body">4-bit signed multiply → 8-bit result. Upper nibble shown on 7-seg digit 1, lower on digit 0.</div>
+      </div>
+      <div class="card amber" style="padding:0.9rem">
+        <div class="card-title">Comparison</div>
+        <div class="card-body">Generates three flags: Equal, GreaterThan, LessThan. All three shown on BASYS3 LEDs LD12–LD14.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SLIDE 5: SYSTEM ARCHITECTURE ── -->
+  <div class="slide slide-content" id="slide-4">
+    <div class="slide-label">Architecture</div>
+    <h2 class="slide-title">System <span class="hl">Architecture</span> — Data Path</h2>
+    <div class="flow" style="margin-bottom:1.5rem;flex-wrap:wrap;gap:0.5rem;">
+      <div class="flow-box">
+        <div class="fb-title">Program ROM</div>
+        <div class="fb-body">8×12-bit<br>combinational</div>
+      </div>
+      <div class="flow-arrow"></div>
+      <div class="flow-box">
+        <div class="fb-title">IDecoder</div>
+        <div class="fb-body">Extracts all<br>control signals</div>
+      </div>
+      <div class="flow-arrow"></div>
+      <div class="flow-box">
+        <div class="fb-title">Register Bank</div>
+        <div class="fb-body">8 × 4-bit<br>R0 hardwired=0</div>
+      </div>
+      <div class="flow-arrow"></div>
+      <div class="flow-box">
+        <div class="fb-title">ALU</div>
+        <div class="fb-body">ADD/SUB/NEG<br>+ flags</div>
+      </div>
+      <div class="flow-arrow"></div>
+      <div class="flow-box">
+        <div class="fb-title">Load Selector</div>
+        <div class="fb-body">MUX: ALU result<br>or immediate</div>
+      </div>
+      <div class="flow-arrow"></div>
+      <div class="flow-box" style="border-color:var(--accent);">
+        <div class="fb-title" style="color:var(--accent3);">Write Back</div>
+        <div class="fb-body">DataBus →<br>destination reg</div>
+      </div>
+    </div>
+    <div class="two-col" style="gap:1rem;">
+      <div style="display:flex;flex-direction:column;gap:0.75rem;">
+        <div class="card blue" style="padding:1rem">
+          <div class="card-title">Program Counter Loop</div>
+          <div class="card-body">PC → ROM → Instr → Decoder → PC_next. On each slow_clk edge PC is updated. PC_Adder always computes PC+1. Address_Selector chooses between PC+1 and the jump address.</div>
+        </div>
+        <div class="card purple" style="padding:1rem">
+          <div class="card-title">Single-Cycle Guarantee</div>
+          <div class="card-body">Every combinational path settles within one 1Hz clock period. Fetch + Decode + Execute all happen in one cycle. No pipeline, no hazards, no stalls.</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:0.75rem;">
+        <div class="card green" style="padding:1rem">
+          <div class="card-title">Extended Components (Parallel)</div>
+          <div class="card-body">Multiplier, Comparator, and Logic Gates are wired directly to R1_out and R2_out. They run continuously and update immediately — no ROM needed, no clock dependency.</div>
+        </div>
+        <div class="card amber" style="padding:1rem">
+          <div class="card-title">Clock: 100MHz → 1Hz</div>
+          <div class="card-body">A counter counts to 49,999,999 and toggles slow_clk. 7-segment refresh runs at ~500Hz per digit so both digits appear lit simultaneously (multiplexing).</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SLIDE 6: PROGRAM COUNTER ── -->
+  <div class="slide slide-content" id="slide-5">
+    <div class="slide-label">Core Components</div>
+    <h2 class="slide-title">Program Counter & <span class="hl">Address Control</span></h2>
+    <div class="two-col">
+      <div style="display:flex;flex-direction:column;gap:1rem;">
+        <div class="card blue">
+          <div class="card-title">3-bit Program Counter</div>
+          <div class="card-body">Three D flip-flops store the current instruction address (0–7). On every rising slow_clk edge it loads PC_next. RST forces all bits to 0 — program restarts from address 0.</div>
+        </div>
+        <div class="card purple">
+          <div class="card-title">PC_Adder — Always +1</div>
+          <div class="card-body">A 3-bit adder built from Half Adders (B is always 0, carry-in always 1). Combinational — PC+1 is ready instantly. Used for normal sequential execution.</div>
+        </div>
+        <div class="card green">
+          <div class="card-title">Address_Selector MUX</div>
+          <div class="card-body">A 2-way 3-bit MUX. When J='0' it selects PC+1 (normal flow). When J='1' it selects the jump address JA from the decoder — extracted from instruction bits [2:0].</div>
+        </div>
+      </div>
+      <div>
+        <div class="code-block">
+<span class="cm">-- Jump decision in IDecoder</span>
+<span class="kw">if</span> RCJump = <span class="str">"0000"</span> <span class="kw">then</span>
+    J  &lt;= Jump;            <span class="cm">-- '1'</span>
+    JA &lt;= I(<span class="num">2</span> <span class="kw">downto</span> <span class="num">0</span>);  <span class="cm">-- addr bits</span>
+<span class="kw">else</span>
+    J  &lt;= NotJump;         <span class="cm">-- '0'</span>
+<span class="kw">end if</span>;
+
+<span class="cm">-- Address Selector (MUX)</span>
+PC_next &lt;= JA       <span class="kw">when</span> J = <span class="str">'1'</span>
+           <span class="kw">else</span> PC_plus1;
+
+<span class="cm">-- Clock Divider (100MHz → 1Hz)</span>
+<span class="kw">if</span> count = <span class="num">49_999_999</span> <span class="kw">then</span>
+    slow_clk &lt;= <span class="kw">not</span> slow_clk;
+    count &lt;= <span class="num">0</span>;
+<span class="kw">else</span>
+    count &lt;= count + <span class="num">1</span>;
+<span class="kw">end if</span>;
+        </div>
+        <div class="card amber" style="margin-top:1rem;padding:0.9rem;">
+          <div class="card-title">Why JZR R0 always jumps</div>
+          <div class="card-body">R0 is permanently "0000". So RCJump is always "0000", J is always '1', and the jump always fires. This gives a free unconditional branch instruction.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SLIDE 7: REGISTER BANK ── -->
+  <div class="slide slide-content" id="slide-6">
+    <div class="slide-label">Core Components</div>
+    <h2 class="slide-title">Register Bank — <span class="hl">3-to-8 Decoder</span></h2>
+    <div class="two-col">
+      <div style="display:flex;flex-direction:column;gap:1rem;">
+        <div class="card blue">
+          <div class="card-title">8 Registers (R0–R7)</div>
+          <div class="card-body">R1–R7 are real Register_4bit components (four D flip-flops each). R0 is just a wire permanently assigned "0000" — no flip-flops, impossible to write to.</div>
+        </div>
+        <div class="card green">
+          <div class="card-title">3-to-8 Decoder — One-Hot</div>
+          <div class="card-body">Takes a 3-bit RegSel address and produces 8 EN signals, exactly one of which is '1'. This ensures only the selected register latches the DataBus value each clock cycle.</div>
+        </div>
+        <div class="card amber">
+          <div class="card-title">RegEnable — Master Kill Switch</div>
+          <div class="card-body">During JZR, IDecoder sets REn="000". The top level converts this to RegEnable='0', which forces ALL EN signals to '0'. No register writes occur during JZR — ever.</div>
+        </div>
+      </div>
+      <div>
+        <div class="code-block" style="margin-bottom:1rem;">
+<span class="cm">-- 3-to-8 Decoder (one-hot)</span>
+EN(<span class="num">0</span>) &lt;= RegEnable <span class="kw">when</span> RegSel=<span class="str">"000"</span> <span class="kw">else</span> <span class="str">'0'</span>;
+EN(<span class="num">1</span>) &lt;= RegEnable <span class="kw">when</span> RegSel=<span class="str">"001"</span> <span class="kw">else</span> <span class="str">'0'</span>;
+EN(<span class="num">2</span>) &lt;= RegEnable <span class="kw">when</span> RegSel=<span class="str">"010"</span> <span class="kw">else</span> <span class="str">'0'</span>;
+<span class="cm">-- ... repeats for all 8</span>
+
+<span class="cm">-- R0 hardwired — no Register_4bit</span>
+R0_out &lt;= <span class="str">"0000"</span>;
+
+<span class="cm">-- RegWriteEn in top level</span>
+RegWriteEn &lt;= <span class="str">'0'</span> <span class="kw">when</span> REn=<span class="str">"000"</span> <span class="kw">else</span> <span class="str">'1'</span>;
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1rem;">
+          <div style="font-family:var(--mono);font-size:0.7rem;color:var(--accent);margin-bottom:0.6rem;">EXAMPLE — ADD R2, R1</div>
+          <div class="signal-list">
+            <div class="signal-row" style="grid-template-columns:120px 60px 1fr;font-size:0.78rem;">
+              <span class="signal-name">REn</span><span class="signal-type">"010"</span><span style="color:var(--muted);">decoder targets R2</span>
+            </div>
+            <div class="signal-row" style="grid-template-columns:120px 60px 1fr;font-size:0.78rem;">
+              <span class="signal-name">RegEnable</span><span class="signal-type">'1'</span><span style="color:var(--muted);">"010"≠"000", write allowed</span>
+            </div>
+            <div class="signal-row" style="grid-template-columns:120px 60px 1fr;font-size:0.78rem;">
+              <span class="signal-name">EN(2)</span><span style="color:var(--accent3);font-family:var(--mono);font-size:0.7rem;">'1'</span><span style="color:var(--muted);">only R2 gets enabled</span>
+            </div>
+            <div class="signal-row" style="grid-template-columns:120px 60px 1fr;font-size:0.78rem;">
+              <span class="signal-name">EN(0,1,3–7)</span><span class="signal-type">'0'</span><span style="color:var(--muted);">all others silent</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SLIDE 8: INSTRUCTION DECODER ── -->
+  <div class="slide slide-content" id="slide-7">
+    <div class="slide-label">Core Components</div>
+    <h2 class="slide-title">Instruction <span class="hl">Decoder</span> — Control Brain</h2>
+    <p style="color:var(--muted);font-size:0.85rem;margin-bottom:1.2rem;">Purely combinational. Takes the 12-bit instruction and drives every control signal in the same clock cycle. Safe defaults prevent VHDL latch inference.</p>
+    <table class="instr-table" style="margin-bottom:1.2rem;">
+      <thead>
+        <tr><th>INSTRUCTION</th><th>REn</th><th>RSA</th><th>RSB</th><th>OpS</th><th>J</th><th>L</th><th>IM</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>MOVI R, d</td><td>R</td><td>—</td><td>—</td><td>—</td><td>0</td><td><span class="badge badge-green">1 (imm)</span></td><td>I[3:0]</td></tr>
+        <tr><td>ADD Ra, Rb</td><td>Ra</td><td>Ra</td><td>Rb</td><td><span class="badge badge-blue">0 (add)</span></td><td>0</td><td><span class="badge badge-purple">0 (ALU)</span></td><td>—</td></tr>
+        <tr><td>NEG R</td><td>R</td><td>000 (R0)</td><td>R</td><td><span class="badge badge-amber">1 (sub)</span></td><td>0</td><td><span class="badge badge-purple">0 (ALU)</span></td><td>—</td></tr>
+        <tr><td>JZR R, d</td><td>000</td><td>R</td><td>—</td><td>—</td><td>1 if R=0</td><td><span class="badge badge-purple">0 (ALU)</span></td><td>—</td></tr>
+      </tbody>
+    </table>
+    <div class="two-col" style="gap:1rem;">
+      <div class="card blue" style="padding:0.9rem;">
+        <div class="card-title">Load Selector (L signal)</div>
+        <div class="card-body">L='1' during MOVI → immediate value bypasses ALU and goes directly onto DataBus. L='0' for all other instructions → ALU result flows through.</div>
+      </div>
+      <div class="card amber" style="padding:0.9rem;">
+        <div class="card-title">NEG uses R0 as operand A</div>
+        <div class="card-body">Decoder hardcodes RSA="000" for NEG. MUX selects R0="0000" as operand A. ALU computes 0 − R = −R. No dedicated "negate" hardware needed.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SLIDE 9: ALU ── -->
+  <div class="slide slide-content" id="slide-8">
+    <div class="slide-label">Core Components</div>
+    <h2 class="slide-title">Add / Subtract <span class="hl">Unit</span> — The ALU</h2>
+    <div class="two-col">
+      <div style="display:flex;flex-direction:column;gap:0.9rem;">
+        <div class="card blue">
+          <div class="card-title">4-bit Ripple Carry Adder</div>
+          <div class="card-body">Four Full Adders chained. Each Full Adder is built from two Half Adders. Carry ripples from bit 0 to bit 3. All four adders compute simultaneously — it is parallel hardware, not sequential.</div>
+        </div>
+        <div class="card purple">
+          <div class="card-title">Subtraction via 2's Complement</div>
+          <div class="card-body">When OpS='1': B is XORed with "1111" (inverts all bits) and Cin is set to 1. This computes A + NOT(B) + 1 = A − B. No separate subtractor hardware needed.</div>
+        </div>
+        <div class="card green">
+          <div class="card-title">Zero & Overflow Flags</div>
+          <div class="card-body">Zero='1' when Result="0000" — used by JZR. Overflow fires when carry INTO the MSB differs from carry OUT of the MSB — signed wrap detected automatically.</div>
+        </div>
+      </div>
+      <div>
+        <div class="code-block">
+<span class="cm">-- B inversion for subtraction</span>
+B_in &lt;= B <span class="kw">xor</span> (OpS & OpS & OpS & OpS);
+
+<span class="cm">-- Cin = OpS (1 for sub, 0 for add)</span>
+<span class="fn">RCA_4bit</span> <span class="kw">port map</span>(
+    A   =&gt; A,
+    B   =&gt; B_in,
+    Cin =&gt; OpS,
+    Sum =&gt; Result,
+    Cout=&gt; Carry
+);
+
+<span class="cm">-- Zero detection</span>
+Zero &lt;= <span class="str">'1'</span> <span class="kw">when</span> Result = <span class="str">"0000"</span>
+        <span class="kw">else</span> <span class="str">'0'</span>;
+
+<span class="cm">-- Overflow: carry-in MSB ≠ carry-out MSB</span>
+Overflow &lt;= Carry_3 <span class="kw">xor</span> Carry_out;
+        </div>
+        <div class="card amber" style="margin-top:1rem;padding:0.9rem;">
+          <div class="card-title">NEG = SUB from 0</div>
+          <div class="card-body">A=0000 (R0), B=R, OpS=1 → Result = 0 − R. The ripple-carry adder does this for free. No hardware change needed between NEG and SUB.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SLIDE 10: ROM PROGRAM ── -->
+  <div class="slide slide-content" id="slide-9">
+    <div class="slide-label">Program ROM</div>
+    <h2 class="slide-title">ROM Program — Computing <span class="hl3">1+2+3 = 6</span></h2>
+    <table class="instr-table" style="margin-bottom:1.2rem;">
+      <thead>
+        <tr><th>ADDR</th><th>ASSEMBLY</th><th>BINARY</th><th>WHAT HAPPENS</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>0</td><td>MOVI R7, 3</td><td><code>101110000011</code></td><td>R7 = 3 (accumulator)</td></tr>
+        <tr><td>1</td><td>MOVI R1, 1</td><td><code>100010000001</code></td><td>R1 = 1</td></tr>
+        <tr><td>2</td><td>NEG R1</td><td><code>010010000000</code></td><td>R1 = 0−1 = 15 (1111 = −1)</td></tr>
+        <tr><td>3</td><td>MOVI R2, 3</td><td><code>100100000011</code></td><td>R2 = 3 (loop counter)</td></tr>
+        <tr><td>4</td><td>ADD R2, R1</td><td><code>000100010000</code></td><td>R2 = R2 − 1 (adds −1)</td></tr>
+        <tr><td>5</td><td>ADD R7, R2</td><td><code>001110100000</code></td><td>R7 = R7 + R2 (accumulate)</td></tr>
+        <tr><td>6</td><td>JZR R2, 6</td><td><code>110100000110</code></td><td>Halt if R2=0, else continue</td></tr>
+        <tr><td>7</td><td>JZR R0, 4</td><td><code>110000000100</code></td><td>Always jump back to addr 4</td></tr>
+      </tbody>
+    </table>
+    <div class="two-col" style="gap:1rem;">
+      <div class="card blue" style="padding:0.9rem;">
+        <div class="card-title">Why NEG R1 gives −1</div>
+        <div class="card-body">4-bit 2's complement: 0 − 1 = 1111 = 15 unsigned = −1 signed. Adding 15 to any 4-bit number is the same as subtracting 1 (modular arithmetic).</div>
+      </div>
+      <div class="card green" style="padding:0.9rem;">
+        <div class="card-title">Loop structure</div>
+        <div class="card-body">Addr 4–7 form a loop. Each iteration: R2 decrements by 1, R7 accumulates R2. After 3 loops: R7 = 3+2+1 = 6. When R2=0, addr 6 halts by jumping to itself.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SLIDE 11: EXECUTION TRACE ── -->
+  <div class="slide slide-content" id="slide-10">
+    <div class="slide-label">Execution Trace</div>
+    <h2 class="slide-title">Clock-by-Clock <span class="hl">Trace</span></h2>
+    <table class="trace-table">
+      <thead>
+        <tr><th>CLOCK</th><th>PC</th><th>INSTRUCTION</th><th>KEY ACTION</th><th>R1</th><th>R2</th><th>R7</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>RST</td><td>0</td><td>—</td><td>All registers cleared</td><td>0</td><td>0</td><td>0</td></tr>
+        <tr><td>1</td><td>0</td><td>MOVI R7,3</td><td>DataBus=3 → R7</td><td>0</td><td>0</td><td>3</td></tr>
+        <tr><td>2</td><td>1</td><td>MOVI R1,1</td><td>DataBus=1 → R1</td><td>1</td><td>0</td><td>3</td></tr>
+        <tr><td>3</td><td>2</td><td>NEG R1</td><td>0−1 = 1111 → R1</td><td>15</td><td>0</td><td>3</td></tr>
+        <tr><td>4</td><td>3</td><td>MOVI R2,3</td><td>DataBus=3 → R2</td><td>15</td><td>3</td><td>3</td></tr>
+        <tr class="highlight"><td>5</td><td>4</td><td>ADD R2,R1</td><td>3+15=18 mod16=2 → R2</td><td>15</td><td>2</td><td>3</td></tr>
+        <tr class="highlight"><td>6</td><td>5</td><td>ADD R7,R2</td><td>3+2=5 → R7</td><td>15</td><td>2</td><td>5</td></tr>
+        <tr><td>7</td><td>6</td><td>JZR R2,6</td><td>R2≠0 → no jump, PC=7</td><td>15</td><td>2</td><td>5</td></tr>
+        <tr><td>8</td><td>7</td><td>JZR R0,4</td><td>R0=0 → jump to 4</td><td>15</td><td>2</td><td>5</td></tr>
+        <tr class="highlight"><td>9–12</td><td>4–7</td><td>Loop 2</td><td>R2: 2→1, R7: 5→6</td><td>15</td><td>1</td><td>6</td></tr>
+        <tr class="highlight"><td>13–14</td><td>4–5</td><td>Loop 3</td><td>R2: 1→0, R7: 6+0=6</td><td>15</td><td>0</td><td>6</td></tr>
+        <tr class="halt"><td>15+</td><td>6</td><td>JZR R2,6</td><td>R2=0 → PC stays at 6 ∞</td><td>15</td><td>0</td><td>6</td></tr>
+      </tbody>
+    </table>
+    <div class="card blue" style="margin-top:1rem;padding:0.9rem;">
+      <div class="card-title">3+15=2? — Modular arithmetic</div>
+      <div class="card-body" style="font-size:0.83rem;">R2=3 (0011), R1=15 (1111 = −1 in 4-bit). 0011+1111 = 1 0010. The carry out is discarded. Result = 0010 = 2. This is 3+(−1) = 2. Correct.</div>
+    </div>
+  </div>
+
+  <!-- ── SLIDE 12: BOARD OUTPUT ── -->
+  <div class="slide slide-content" id="slide-11">
+    <div class="slide-label">FPGA Board</div>
+    <h2 class="slide-title">BASYS3 <span class="hl3">Board Output</span></h2>
+    <div class="two-col">
+      <div>
+        <table class="instr-table">
+          <thead><tr><th>LED</th><th>SIGNAL</th><th>FINAL STATE</th></tr></thead>
+          <tbody>
+            <tr><td>LD0</td><td>R7[0]</td><td>OFF (6=0110)</td></tr>
+            <tr><td>LD1</td><td>R7[1]</td><td><span class="badge badge-green">ON</span></td></tr>
+            <tr><td>LD2</td><td>R7[2]</td><td><span class="badge badge-green">ON</span></td></tr>
+            <tr><td>LD3</td><td>R7[3]</td><td>OFF (6=0110)</td></tr>
+            <tr><td>LD4–LD11</td><td>R1×R2</td><td>0 (R2=0 at halt)</td></tr>
+            <tr><td>LD12</td><td>EQ</td><td>OFF (15≠0)</td></tr>
+            <tr><td>LD13</td><td>GT</td><td><span class="badge badge-green">ON</span> (15&gt;0)</td></tr>
+            <tr><td>LD14</td><td>LT</td><td>OFF</td></tr>
+            <tr><td>LD15</td><td>Carry</td><td>Flickers</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:0.9rem;">
+        <div class="card blue">
+          <div class="card-title">7-Segment Multiplexing</div>
+          <div class="card-body">
+            Mul_sig is 8 bits. One digit shows 4 bits at a time. A 500Hz counter switches between digit 0 (lower nibble) and digit 1 (upper nibble). Eye persistence makes both appear lit.
+            <br><br>
+            <code style="color:var(--accent3);">an="1110"</code> → digit 0 ON<br>
+            <code style="color:var(--accent3);">an="1101"</code> → digit 1 ON
+          </div>
+        </div>
+        <div class="card amber">
+          <div class="card-title">Multiplier values during execution</div>
+          <div class="card-body" style="font-family:var(--mono);font-size:0.78rem;line-height:1.9;">
+            R2=3 → 15×3 = 45 → <strong style="color:var(--accent4)">2D hex</strong><br>
+            R2=2 → 15×2 = 30 → <strong style="color:var(--accent4)">1E hex</strong><br>
+            R2=1 → 15×1 = 15 → <strong style="color:var(--accent4)">0F hex</strong><br>
+            R2=0 → 15×0 = 0  → <strong style="color:var(--accent4)">00 hex</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SLIDE 13: BUILDING BLOCKS ── -->
+  <div class="slide slide-content" id="slide-12">
+    <div class="slide-label">Fundamental Building Blocks</div>
+    <h2 class="slide-title">From <span class="hl">Gates</span> to Processor</h2>
+    <div class="comp-grid">
+      <div class="comp-cell">
+        <div class="cc-icon">🔀</div>
+        <div class="cc-name">D Flip-Flop</div>
+        <div class="cc-desc">1-bit storage. Captures D on rising clock edge. RST clears async. Foundation of all registers.</div>
+      </div>
+      <div class="comp-cell">
+        <div class="cc-icon">➕</div>
+        <div class="cc-name">Half Adder</div>
+        <div class="cc-desc">Sum = A XOR B. Carry = A AND B. No carry-in. Two gates, two outputs.</div>
+      </div>
+      <div class="comp-cell">
+        <div class="cc-icon">➕</div>
+        <div class="cc-name">Full Adder</div>
+        <div class="cc-desc">Two half adders chained. Handles carry-in. Cout = C1 OR C2.</div>
+      </div>
+      <div class="comp-cell">
+        <div class="cc-icon">🔢</div>
+        <div class="cc-name">RCA 4-bit</div>
+        <div class="cc-desc">4 full adders chained. Carry ripples bit-by-bit. Used in ALU and PC_Adder.</div>
+      </div>
+      <div class="comp-cell">
+        <div class="cc-icon">🔀</div>
+        <div class="cc-name">MUX 2-to-1</div>
+        <div class="cc-desc">Selects between two inputs with a 1-bit control. Used in Address & Load Selectors.</div>
+      </div>
+      <div class="comp-cell">
+        <div class="cc-icon">🔀</div>
+        <div class="cc-name">MUX 8-to-1</div>
+        <div class="cc-desc">Picks one of 8 register outputs. Two instances (MUXA, MUXB) feed ALU operands.</div>
+      </div>
+      <div class="comp-cell">
+        <div class="cc-icon">📦</div>
+        <div class="cc-name">Register 4-bit</div>
+        <div class="cc-desc">4 D flip-flops + Enable gate. Only writes when Enable='1'. Holds value otherwise.</div>
+      </div>
+      <div class="comp-cell">
+        <div class="cc-icon">🔓</div>
+        <div class="cc-name">3-to-8 Decoder</div>
+        <div class="cc-desc">One-hot: exactly one of 8 outputs goes high. Routes write enable to correct register.</div>
+      </div>
+      <div class="comp-cell">
+        <div class="cc-icon">💾</div>
+        <div class="cc-name">Program ROM</div>
+        <div class="cc-desc">8×12-bit combinational memory. PC address in → 12-bit instruction out instantly.</div>
+      </div>
+      <div class="comp-cell">
+        <div class="cc-icon">🧠</div>
+        <div class="cc-name">IDecoder</div>
+        <div class="cc-desc">Extracts all control signals from 12-bit instruction. Purely combinational. No clock.</div>
+      </div>
+      <div class="comp-cell">
+        <div class="cc-icon">✖️</div>
+        <div class="cc-name">Multiplier</div>
+        <div class="cc-desc">4-bit × 4-bit → 8-bit. Combinational. Runs continuously on R1×R2. Shows on 7-seg.</div>
+      </div>
+      <div class="comp-cell">
+        <div class="cc-icon">⚖️</div>
+        <div class="cc-name">Comparator</div>
+        <div class="cc-desc">Generates EQ, GT, LT flags from R1 vs R2. Three concurrent signal assignments.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SLIDE 14: CONCLUSION ── -->
+  <div class="slide slide-dark" id="slide-13">
+    <div class="slide-label">Conclusion</div>
+    <h2 class="slide-title">What We <span class="hl">Achieved</span></h2>
+    <div class="two-col" style="gap:1.5rem;">
+      <div class="achieve-list">
+        <div class="achieve-item">
+          <div class="achieve-num">01</div>
+          <div class="achieve-text">
+            <strong>4-bit Single-Cycle Processor</strong>
+            <span>Executes MOVI, ADD, NEG, JZR in one clock cycle. Proven correct on real hardware computing 1+2+3=6.</span>
+          </div>
+        </div>
+        <div class="achieve-item">
+          <div class="achieve-num">02</div>
+          <div class="achieve-text">
+            <strong>Extended Instruction Set</strong>
+            <span>Added SUB, AND, OR, XOR, MUL, CMP with full backward compatibility. 12-bit sub-opcode scheme.</span>
+          </div>
+        </div>
+        <div class="achieve-item">
+          <div class="achieve-num">03</div>
+          <div class="achieve-text">
+            <strong>FPGA Validated on BASYS3</strong>
+            <span>Real-time LED display, 7-segment multiplexing, 1Hz slow clock for visible execution. BTNC reset.</span>
+          </div>
+        </div>
+      </div>
+      <div class="achieve-list">
+        <div class="achieve-item">
+          <div class="achieve-num">04</div>
+          <div class="achieve-text">
+            <strong>Fully Structural VHDL</strong>
+            <span>Every component built from D flip-flops upward. No black-box IP. Fully understood at gate level.</span>
+          </div>
+        </div>
+        <div class="achieve-item">
+          <div class="achieve-num">05</div>
+          <div class="achieve-text">
+            <strong>Signed Arithmetic Mastery</strong>
+            <span>2's complement subtraction via XOR + carry-in. Overflow detection. NEG using R0 as zero source.</span>
+          </div>
+        </div>
+        <div class="achieve-item">
+          <div class="achieve-num">06</div>
+          <div class="achieve-text">
+            <strong>Parallel Extended Components</strong>
+            <span>Multiplier, Comparator, Logic Gates run continuously on R1/R2 — no ROM needed, instant output.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- thank you strip -->
+    <div style="margin-top:auto;padding-top:2rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+      <div style="font-family:var(--mono);font-size:0.7rem;color:var(--muted);">CS1050 · University of Moratuwa · Group 01</div>
+      <div style="font-family:var(--mono);font-size:1.1rem;color:var(--accent);letter-spacing:0.1em;">Thank You</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="keyboard-hint">
+  <span class="key">←</span> <span class="key">→</span> navigate &nbsp;|&nbsp; <span class="key">Space</span> next
+</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const navDots = document.getElementById('navDots');
+  const slideCount = document.getElementById('slideCount');
+  const progress = document.getElementById('progress');
+  const total = slides.length;
+  let current = 0;
+
+  // Build nav dots
+  slides.forEach((_, i) => {
+    const d = document.createElement('button');
+    d.className = 'nav-dot' + (i === 0 ? ' active' : '');
+    d.title = `Slide ${i+1}`;
+    d.onclick = () => goTo(i);
+    navDots.appendChild(d);
+  });
+
+  function goTo(n) {
+    if (n < 0 || n >= total) return;
+    slides[current].classList.remove('active');
+    slides[current].classList.add('exit-left');
+    setTimeout(() => slides[current].classList.remove('exit-left'), 500);
+    current = n;
+    slides[current].classList.add('active');
+    document.querySelectorAll('.nav-dot').forEach((d, i) => d.classList.toggle('active', i === current));
+    slideCount.textContent = String(current + 1).padStart(2, '0') + ' / ' + String(total).padStart(2, '0');
+    progress.style.width = ((current + 1) / total * 100) + '%';
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); goTo(current + 1); }
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp') { e.preventDefault(); goTo(current - 1); }
+    if (e.key === 'Home') goTo(0);
+    if (e.key === 'End')  goTo(total - 1);
+  });
+
+  // Touch support
+  let tx = 0;
+  document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; });
+  document.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - tx;
+    if (Math.abs(dx) > 50) goTo(current + (dx < 0 ? 1 : -1));
+  });
+
+  // Init progress
+  progress.style.width = (1 / total * 100) + '%';
+</script>
+</body>
+</html>
