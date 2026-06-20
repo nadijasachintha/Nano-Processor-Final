@@ -1,8 +1,7 @@
-# Nano-Processor-Final
+# Nano-Processor-Project( **CS1050 — Computer Organization and Digital Design** at the **University of Moratuwa**.)
 
 A fully functional 4-bit processor designed and implemented in VHDL, synthesized on a Digilent BASYS3 (Xilinx Artix-7) FPGA board. Built gate-up from D flip-flops and ripple-carry adders through to a complete single-cycle CPU with a custom instruction set, extended with a hardware multiplier, comparator, and bitwise logic units.
 
-Originally developed for **CS1050 — Computer Organization and Digital Design** at the **University of Moratuwa**.
 
 ---
 
@@ -15,6 +14,8 @@ The `Extended` build adds a 4-bit multiplier, comparator, and bitwise AND/OR/XOR
 ---
 
 ## Architecture
+<img width="507" height="667" alt="image" src="https://github.com/user-attachments/assets/0aa822e2-9917-43b4-9afc-c92d0056de5e" />
+
 
 - **Type:** Single-cycle, 4-bit data path
 - **Registers:** 8 × 4-bit (R0–R7), R0 hardwired to zero
@@ -93,6 +94,8 @@ Nano-Processor-Final/
 5. Check the Tcl Console for the pass/fail report
 
 ### Hardware Deployment
+
+<img width="817" height="463" alt="image" src="https://github.com/user-attachments/assets/440e7fc2-1175-4420-84a0-3200eb52be17" />
 
 1. Add the BASYS3 `.xdc` constraints file as a constraint source
 2. Set `NanoprocessorTop` (from `components/NanoprocessorTop/`) as the top module
