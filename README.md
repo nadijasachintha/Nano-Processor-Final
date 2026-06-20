@@ -1,4 +1,4 @@
-# Nanoprocessor — A 4-bit CPU Built from Scratch in VHDL
+# Nano-Processor-Final
 
 A fully functional 4-bit processor designed and implemented in VHDL, synthesized on a Digilent BASYS3 (Xilinx Artix-7) FPGA board. Built gate-up from D flip-flops and ripple-carry adders through to a complete single-cycle CPU with a custom instruction set, extended with a hardware multiplier, comparator, and bitwise logic units.
 
@@ -10,7 +10,7 @@ Originally developed for **CS1050 — Computer Organization and Digital Design**
 
 The processor fetches, decodes, and executes one instruction per clock cycle from an 8-slot ROM, using an 8-register bank, a 4-bit ALU, and a fully combinational instruction decoder. As a demo program, it computes **1 + 2 + 3 = 6** using a loop with conditional jumps, and displays the result on LEDs and a 7-segment display.
 
-Extended modules add a 4-bit multiplier, comparator, and bitwise AND/OR/XOR — all driven by live register values during program execution.
+The `Extended` build adds a 4-bit multiplier, comparator, and bitwise AND/OR/XOR units, all driven by live register values during program execution.
 
 ---
 
@@ -34,54 +34,45 @@ Extended modules add a 4-bit multiplier, comparator, and bitwise AND/OR/XOR — 
 
 ---
 
-## Block Diagram
-
-```
-                 +----------------+
-                 |  Program ROM   |
-                 |   (8 x 12-bit) |
-                 +-------+--------+
-                         |
-                         v
-                 +----------------+        +------------------+
-   PC ---------->| Instruction    |------->| Instruction       |
-   (3-bit)        |  Bus (12-bit) |        | Decoder           |
-                 +----------------+        +---+-----+-----+---+
-                                                |     |     |
-                      +-------------------------+     |     +-------------------+
-                      |                                |                        |
-                      v                                v                        v
-            +------------------+              +----------------+      +----------------+
-            | Register Bank    |<-------------|  Load Selector |<-----|     ALU        |
-            | R0-R7 (4-bit ea) |   DataBus    |  (Imm / ALU)   |      | (Add/Subtract) |
-            +---+----------+---+              +----------------+      +-------+--------+
-                |          |                                                  ^
-                v          v                                                  |
-          +-----------+ +-----------+                                        |
-          | 8-way MUX | | 8-way MUX |----------------------------------------+
-          | (Op A)    | | (Op B)    |
-          +-----------+ +-----------+
-```
-
----
-
 ## Repository Structure
 
 ```
-nanoprocessor/
-├── src/
-│   ├── packages.vhd              # buses, constants, ALU_H packages
-│   ├── nanoprocessor_pkg.vhd     # All 13 core CPU modules
-│   ├── multiplier_comparator.vhd # Multiplier, Comparator, Logic Gates
-│   ├── nanoprocessor_ext.vhd     # CPU with R1/R2 exposed for extensions
-│   └── nanoprocessor_top.vhd     # Top-level: clock divider + 7-seg + LEDs
-├── constraints/
-│   └── basys3.xdc                # BASYS3 pin constraints
-├── testbench/
-│   ├── tb_nanoprocessor.vhd      # Full-system testbench
-│   ├── tb_multiplier.vhd         # Multiplier unit test
-│   ├── tb_comparator.vhd         # Comparator unit test
-│   └── tb_logic_gates.vhd        # Logic gates unit test
+Nano-Processor-Final/
+├── components/                    # Base processor — one folder per module
+│   ├── Add_Sub_4bit/               # 4-bit ALU (add/subtract unit)
+│   ├── Address_Selector/           # PC MUX (2-way 3-bit)
+│   ├── D_FF/                       # D flip-flop
+│   ├── IDecorder/                  # Instruction decoder + opcode logic
+│   ├── Load_Selector/              # Data bus MUX (immediate vs ALU)
+│   ├── NanoprocessorTop/           # Top-level wrapper (clock divider, LEDs)
+│   ├── PC_Adder/                   # 3-bit adder (PC + 1)
+│   ├── Packages/                   # buses, constants, ALU_H packages
+│   ├── Program counter/            # 3-bit program counter
+│   ├── Program_ROM/                # 8x12-bit instruction memory
+│   ├── RCA_4bit/                   # 4-bit ripple carry adder
+│   ├── Register Bank/              # 8x4-bit register file
+│   ├── Register_4bit/              # Single 4-bit register with enable
+│   └── Register_Data_MUX/          # 8-way 4-bit MUX
+│
+├── Extended/                       # Extended version with extra modules
+│   ├── Components/                 # Multiplier, Comparator, Logic Gates, etc.
+│   ├── Packages/                   # Shared packages for extended build
+│   └── Test benches/               # Testbenches for extended components
+│
+├── Test Bench/                     # Unit + integration testbenches
+│   ├── Add_Subtract_Unit_tb.vhd
+│   ├── D_FF_tb.vhd
+│   ├── IDecoder_TB.vhd
+│   ├── RCA_4bit_tb.vhd
+│   ├── TB_Load_Selector.vhd
+│   ├── TB_Register_Bank.vhd
+│   ├── TB_Register_Data_MUX.vhd
+│   ├── tb_Address_Selector.vhd
+│   ├── tb_NanoprocessorTop.vhd     # Full-system testbench
+│   ├── tb_PC_Adder.vhd
+│   ├── tb_Program_Counter.vhd
+│   └── tb_Program_ROM.vhd
+│
 └── README.md
 ```
 
@@ -95,16 +86,16 @@ nanoprocessor/
 
 ### Simulation
 
-1. Open Vivado, create a new RTL project targeting `xc7a35tcpg236-1`
-2. Add all files from `src/` as **Design Sources**
-3. Add `testbench/tb_nanoprocessor.vhd` as a **Simulation Source**
+1. Open Vivado, create a new RTL project targeting `Basys3`
+2. Add every `.vhd` file from `components/` (and `Extended/Components/` if using the extended build) as **Design Sources**
+3. Add the relevant file(s) from `Test Bench/` as **Simulation Sources** — start with `tb_NanoprocessorTop.vhd` for the full system, or any individual `_tb.vhd` file to test one module in isolation
 4. Run Behavioral Simulation
-5. Check the Tcl Console for `PASS: R7 = 6`
+5. Check the Tcl Console for the pass/fail report
 
 ### Hardware Deployment
 
-1. Add `constraints/basys3.xdc` as a constraint file
-2. Set `NanoprocessorTop` as the top module
+1. Add the BASYS3 `.xdc` constraints file as a constraint source
+2. Set `NanoprocessorTop` (from `components/NanoprocessorTop/`) as the top module
 3. Run Synthesis → Implementation → Generate Bitstream
 4. Program the BASYS3 board via Hardware Manager
 
@@ -115,24 +106,31 @@ nanoprocessor/
 | LEDs | Shows |
 |---|---|
 | LD0–LD3 | Final result in R7 (binary) |
-| LD4–LD11 | Multiplier result, R1 × R2 (8-bit binary) |
-| LD12 | EQ flag — R1 = R2 |
-| LD13 | GT flag — R1 > R2 |
-| LD14 | LT flag — R1 < R2 |
+| LD4–LD11 | Multiplier result, R1 × R2 (8-bit binary) — *Extended build only* |
+| LD12 | EQ flag — R1 = R2 — *Extended build only* |
+| LD13 | GT flag — R1 > R2 — *Extended build only* |
+| LD14 | LT flag — R1 < R2 — *Extended build only* |
 | LD15 | ALU carry flag |
-| 7-segment | R1 × R2 in hexadecimal, two digits multiplexed |
+| 7-segment | Result display, multiplexed across two digits |
 
 Press **BTNC** to reset and restart the program from address 0.
 
 ---
 
+## Testing
+
+Every component has a dedicated testbench in `Test Bench/`, allowing each module — from the `D_FF` up to the full `NanoprocessorTop` — to be verified independently before integration. This bottom-up testing approach made it possible to isolate bugs to a single module rather than debugging the entire data path at once.
+
+---
+
 ## What I Learned
 
-- Building combinational and sequential logic from first principles (half adders → full adders → ripple-carry adder → ALU)
+- Building combinational and sequential logic from first principles (D flip-flop → ripple-carry adder → ALU)
 - Designing a clean instruction decoder with no inferred latches
 - Debugging real timing hazards: combinational feedback loops, glitches on status flags, and clock-domain assumptions that only show up in simulation waveforms
-- Structuring a multi-file VHDL project with shared packages for type safety
-- The gap between "it works in theory" and "it works on real silicon" — pin constraints, IO bank limits, and board-specific quirks (BASYS3 only has 16 LEDs and a shared IO bank budget)
+- Structuring a multi-module VHDL project with shared packages for type safety across every component
+- Writing isolated testbenches per module rather than relying solely on full-system simulation
+- The gap between "it works in theory" and "it works on real silicon" — pin constraints, IO bank limits, and board-specific quirks (BASYS3's 16-LED budget and shared IO bank limits)
 
 ---
 
